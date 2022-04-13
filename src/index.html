@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body style="margin: 0; overflow: hidden">
+    <canvas id="screen"></canvas>
+    <div id="fps" style="position: fixed; right: 0; top: 0"></div>
+    <script>
+        const screen = document.querySelector("#screen");
+        const socket = new WebSocket("ws://localhost:5656/ws");
+        const fpsTag = document.querySelector("#fps");
+
+        let screenData;
+        function onResize(doScreen = true, doSocket = true) {
+            const width = document.documentElement.clientWidth, height = document.documentElement.clientHeight;
+            if (doScreen) {
+                screen.width = width;
+                screen.height = height;
+                screenData = screen.getContext('2d').createImageData(width, height);
+            }
+            if (doSocket) {
+                socket.send(`resize ${width} ${height}`);
+            }
+        }
+
+        onResize(true, false);
+        window.addEventListener("resize", function (event) {
+            onResize();
+        });
+        window.addEventListener("click", function (event) {
+            if (socket.readyState == WebSocket.OPEN) {
+                socket.send(`click ${event.clientX} ${event.clientY}`);
+            }
+        });
+
+        socket.addEventListener("open", function (event) {
+            onResize(false, true);
+            socket.send("ready");
+        });
+        socket.addEventListener("error", function (event) {
+            document.body.innerText = "websocket broken. did you refresh the page?";
+        });
+
+        let waitingFrame = false;
+        let frameCount = 0, secondFrameCount = 0;
+        socket.addEventListener("message", function (event) {
+            let match;
+            if (event.data === "frame") {
+                if (waitingFrame) {
+                    console.warn("discard frame while waiting");
+                    return;
+                }
+                waitingFrame = true;
+                requestAnimationFrame(function () {
+                    screen.getContext('2d').putImageData(screenData, 0, 0);
+                    frameCount += 1;
+                    fpsTag.innerText = `Frame: ${frameCount}(${secondFrameCount})`;
+                    socket.send("ready");
+                    waitingFrame = false;
+                });
+            } else if (match = event.data.match(/(-?\d+) (-?\d+) (\d+) (\d+) (\d+)/)) {
+                const x = parseInt(match[1]), y = parseInt(match[2]);
+                if (x < 0 || x >= screenData.width || y < 0 || y >= screenData.height) {
+                    return;
+                }
+                const r = parseInt(match[3]), g = parseInt(match[4]), b = parseInt(match[5]);
+                const offset = y * screenData.width * 4 + x * 4;
+                screenData.data[offset + 0] = r;
+                screenData.data[offset + 1] = g;
+                screenData.data[offset + 2] = b;
+                screenData.data[offset + 3] = 255;
+            } else {
+                console.warn("websocket message: " + event.data);
+            }
+        });
+
+        let previousFrameCount = 0;
+        setInterval(function () {
+            secondFrameCount = frameCount - previousFrameCount;
+            previousFrameCount = frameCount;
+        }, 1000);
+    </script>
+</body>
+
+</html>
