@@ -13,12 +13,7 @@
 
 以交换文本的方式来监听和更新图形界面。
 
-本项目中包含一个Rust库ShimUI，作为ChatUI的宿主，实现了：
-* 向标准输出流写入用户事件
-* 从标准输入流读入窗口画面
-* 启动浏览器并基于canvas实现用户界面
-
-换句话说，只要将ChatUI应用和ShimUI使用双向管道连接起来（使用`run.sh`），就可以让ChatUI应用使用浏览器作为界面了。
+本项目中包含一个Rust库ShimUI，作为ChatUI的宿主。只要将ChatUI应用和ShimUI使用双向管道连接起来（使用`run.sh`），就可以让ChatUI应用使用浏览器作为界面了。
 
 用例`gallery/wander.c`。使用了C语言编写以演示ChatUI用起来的方便程度（以及C语言的不方便程度）：
 
@@ -27,7 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
-#include <ctype.h>
 #include <assert.h>
 #include <math.h>
 
@@ -125,6 +119,7 @@ $ ./wander
 < ready
 784 600 256 256 256
 785 595 256 256 256
+... 省略很多像素点
 816 600 256 256 256
 frame
 < ready
